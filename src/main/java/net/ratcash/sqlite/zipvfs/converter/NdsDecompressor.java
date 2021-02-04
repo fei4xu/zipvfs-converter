@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
@@ -53,8 +54,8 @@ public class NdsDecompressor {
             // reading the header
             ByteBuffer headerBuffer = ByteBuffer.allocate(200);
             bytesRead = fc.read(headerBuffer);
-            headerBuffer.flip();
-            if(headerBuffer.limit()!= 200 && bytesRead != 200)
+            ((Buffer)headerBuffer).flip();
+            if(((Buffer)headerBuffer).limit()!= 200 && bytesRead != 200)
                  throw new IllegalArgumentException("malformed file...");
             
             ZipVfsHeader zipVfsHeader = new ZipVfsHeader(headerBuffer.array());
@@ -62,7 +63,7 @@ public class NdsDecompressor {
             // reading the page Maps
             ByteBuffer pageMapBuffer = ByteBuffer.allocate((int) zipVfsHeader.dataStart - ZipVfsHeader.PAGE_MAP_START);
             bytesRead = fc.read(pageMapBuffer);
-            pageMapBuffer.flip();
+            ((Buffer)pageMapBuffer).flip();
             zipVfsHeader.initPageMap(pageMapBuffer.array(), 0, pageMapBuffer.capacity());
             
             
@@ -74,18 +75,18 @@ public class NdsDecompressor {
             for (ZipVfsPageInfo pageInfo : zipVfsHeader.getPageMap()) {
                 // read the data area
                 bytesRead = fc.read(pageBuffer, pageInfo.offset);
-                pageBuffer.flip();
+                ((Buffer)pageBuffer).flip();
                 
                 // make sure we read the correct number of bytes
                 assert(bytesRead >= pageInfo.size);
-                assert(pageBuffer.limit() >= pageInfo.size);
-                pageBuffer.limit((int) pageInfo.size);
+                assert(((Buffer)pageBuffer).limit() >= pageInfo.size);
+                ((Buffer)pageBuffer).limit((int) pageInfo.size);
                 
                 // make sure the buffer contains a ZLIB stream, i.e. contains the magic header
-                SlotHeader sh = new SlotHeader(pageBuffer.array(), pageBuffer.limit());
+                SlotHeader sh = new SlotHeader(pageBuffer.array(), ((Buffer)pageBuffer).limit());
 //                System.out.println("sh.pageNumber = " + sh.pageNumber);
 //                System.out.println("sh.payloadSize = " + sh.payloadSize);
-                int magicOffset = getZLibMagicOffset(pageBuffer.array(), pageBuffer.limit());
+                int magicOffset = getZLibMagicOffset(pageBuffer.array(), ((Buffer)pageBuffer).limit());
                 if(magicOffset != SlotHeader.SLOT_HEADER_SIZE) {
                     // this may be a bTree Freelist slot or an encrypted ZipVFS slot
                     System.out.println("Skipping offset " + pageInfo.offset + ". Readable ZLIB header was not identified.");
@@ -101,7 +102,7 @@ public class NdsDecompressor {
                 // since we read a whole chunk, the compressor must be finished
                 assert(inflater.finished() == true);
                 inflater.reset();
-                pageBuffer.clear();
+                ((Buffer)pageBuffer).clear();
             }
             System.out.println("Conversion done.\nOpen '" + convertedFile + "' in your faviroute Sqlite Front-End.");
         } 

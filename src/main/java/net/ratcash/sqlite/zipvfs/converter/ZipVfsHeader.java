@@ -15,6 +15,7 @@
  */
 package net.ratcash.sqlite.zipvfs.converter;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +36,7 @@ public class ZipVfsHeader {
     List<ZipVfsPageInfo> pageMap;
     
     public ZipVfsHeader(ByteBuffer buf) {
-        if(buf.limit() < PAGE_MAP_START)
+        if(((Buffer)buf).limit() < PAGE_MAP_START)
             throw new IllegalArgumentException("Buffer must be at a minimum 200 bytes.");
         
         
@@ -83,13 +84,13 @@ public class ZipVfsHeader {
     
     
     public void initPageMap(ByteBuffer buffer) {
-        if(buffer.limit() < dataStart - PAGE_MAP_START)
+        if(((Buffer)buffer).limit() < dataStart - PAGE_MAP_START)
             throw new IllegalArgumentException("Buffer smaller than " + dataStart + ". PageMap can't be read entirely.");
         
         byte[] bytes = new byte[8];
         
         pageMap = new ArrayList<>((int) (dataStart-PAGE_MAP_START) / 8);
-        for(int i = 0; i < buffer.limit(); i+=8) {
+        for(int i = 0; i < ((Buffer)buffer).limit(); i+=8) {
             buffer.get(bytes, 0, 8);
             ZipVfsPageInfo pi = new ZipVfsPageInfo(ZipVfsHeader.getLongBigEndian(0, 8, bytes));
 //            System.out.println(pi.toString());
